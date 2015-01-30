@@ -27,7 +27,7 @@ import java.util.Random;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-/
+
 public class SimpleGame implements Runnable {
 
     final int WIDTH = 1000;
