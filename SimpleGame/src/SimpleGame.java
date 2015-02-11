@@ -1,7 +1,7 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * 
+ * 
+ * 
  */
 
 
@@ -14,16 +14,18 @@ import java.awt.Polygon;
 import java.awt.Shape;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+
 import static java.awt.event.KeyEvent.VK_LEFT;
 import static java.awt.event.KeyEvent.VK_RIGHT;
 import static java.awt.event.KeyEvent.VK_SPACE;
 import static java.awt.event.KeyEvent.VK_UP;
+
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Random;
+
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
@@ -76,9 +78,9 @@ public class SimpleGame implements Runnable {
         canvas.requestFocus();
 
         shapeShip = new SpaceShip(shapeTableX, shapeTableY);
-        cometList = new <Shape>ArrayList();
+        cometList = new ArrayList<Shape>();
         cometList = this.createCometList(cometList,4);
-        cometDirectionList = new <Integer> ArrayList();
+        cometDirectionList = new ArrayList<Integer>();
         cometDirectionList = this.getRandDirections(cometDirectionList,5);
 
     }
@@ -319,7 +321,12 @@ public class SimpleGame implements Runnable {
     //class represent shape of gamer space ship 
     private static class SpaceShip extends Polygon {
 
-        public SpaceShip(int x1, int y1, int x2, int y2, int x3, int y3) {
+        /**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+
+		public SpaceShip(int x1, int y1, int x2, int y2, int x3, int y3) {
             super(new int[]{x1, x2, x3}, new int[]{y1, y2, y3}, 3);
         }
 
@@ -332,7 +339,12 @@ public class SimpleGame implements Runnable {
 
     private static class Bullet extends Polygon {
 
-        public Bullet(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4) {
+        /**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+
+		public Bullet(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4) {
             super(new int[]{x1, x2, x3, x4}, new int[]{y1, y2, y3, y4}, 4);
         }
 
@@ -344,7 +356,12 @@ public class SimpleGame implements Runnable {
     private static class Comet extends Polygon {
 
 
-        public Comet(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4, int x5, int y5, int x6, int y6) {
+        /**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+
+		public Comet(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4, int x5, int y5, int x6, int y6) {
             super(new int[]{x1, x2, x3, x4, x5, x6}, new int[]{y1, y2, y3, y4, y5, y6}, 6);
   
         }
@@ -359,7 +376,7 @@ public class SimpleGame implements Runnable {
     //using random numbers
 
     private ArrayList<Shape> createRandCometList(int howManyComets) {
-        ArrayList cList = new <Shape>ArrayList();
+        ArrayList<Shape> cList = new ArrayList<Shape>();
         Random generator = new Random();
 
         int genTempTab[] = new int[12];
@@ -385,7 +402,7 @@ public class SimpleGame implements Runnable {
 //but chosing them randomly
 
     private ArrayList<Shape> createCometList(ArrayList<Shape> ShapeList,int howManyComets) {
-        ArrayList cList = new <Shape> ArrayList();
+        ArrayList<Shape> cList = new ArrayList<Shape>();
         //ArrayList cFinalList = new <Shape> ArrayList();
         cList.add(new Comet(30, 20, 50, 15, 70, 25, 60, 50, 40, 40, 40, 30));
         cList.add(new Comet(130, 120, 150, 115, 170, 125, 160, 150, 140, 140, 140, 130));
