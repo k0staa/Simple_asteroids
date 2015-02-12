@@ -1,3 +1,3 @@
 # Simple_asteroids
 Simple asteroid game. Developed using Java.
-Version Alpha :)
+Version 0.1 Alpha :)
