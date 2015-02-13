@@ -1,5 +1,5 @@
-/*
- * 
+/*Asteroid game made 
+ * by Michal Kostewicz
  * 
  * 
  */
@@ -177,7 +177,7 @@ public class SimpleGame implements Runnable {
             }
         }
     }
-//Method used just for prepering main window of game
+//Method used just for preparing main window of game
 
     private void render() {
         Graphics2D g = (Graphics2D) bufferStrategy.getDrawGraphics();
@@ -239,7 +239,7 @@ public class SimpleGame implements Runnable {
             drawBullet(g);
         }
         g.setColor(Color.yellow);
-        //g.fillRect((int) x, 0, 50, 50); //testowo zolty kwadrat
+        //g.fillRect((int) x, 0, 50, 50); //TEST yellow rectangle moving in space
         //drawing from list of comets
         if (true) {
             for (Shape sh : cometList) {
@@ -320,8 +320,7 @@ public class SimpleGame implements Runnable {
 
     //class represent shape of gamer space ship 
     private static class SpaceShip extends Polygon {
-
-        /**
+    	 /**
 		 * 
 		 */
 		private static final long serialVersionUID = 1L;
@@ -373,7 +372,7 @@ public class SimpleGame implements Runnable {
 
     }
     //method that creates Array List of comets (you can chose how many)
-    //using random numbers
+    //using random numbers ---THIS METOD ISNT WORKING VERY WELL---
 
     private ArrayList<Shape> createRandCometList(int howManyComets) {
         ArrayList<Shape> cList = new ArrayList<Shape>();
@@ -438,6 +437,7 @@ public class SimpleGame implements Runnable {
         return ShapeList;
 
     }
+    //method used to create random direction for comets.
     private ArrayList<Integer> getRandDirections(ArrayList<Integer> intList,int howMany){
         Random gen = new Random();
         gen.setSeed(System.currentTimeMillis());
