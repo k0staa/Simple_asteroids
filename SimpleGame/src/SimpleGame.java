@@ -32,8 +32,8 @@ public class SimpleGame implements Runnable {
 
 	final int WIDTH = 1000;
 	final int HEIGHT = 700;
-	final int shapeTableX[] = new int[] { 80, 70, 90 };
-	final int shapeTableY[] = new int[] { 60, 100, 100 };
+	final int shapeTableX[] = new int[] {  480, 500, 520, 500};
+	final int shapeTableY[] = new int[] {  370, 360, 370, 330};
 	int shapeHeadPosition = 1; // 1-UP // 2-UP-RRIGHT-ONE //3-UP-RIGHT-TWO
 								// //4-RIGHT //5-DOWN-GIGHT-ONE
 								// 6-DOWN-RIGHT-TWO // 7-DOWN// 8-DOWN-LEFT-ONE
@@ -52,6 +52,7 @@ public class SimpleGame implements Runnable {
 	Shape comet;
 	ArrayList<Shape> cometList;
 	ArrayList<Integer> cometDirectionList;
+	KeyControl myKeyControl;
 	boolean showComet = true;
 	int howManyKilled;
 
@@ -67,8 +68,9 @@ public class SimpleGame implements Runnable {
 		canvas.setIgnoreRepaint(true);
 
 		panel.add(canvas);
-
-		canvas.addKeyListener(new KeyControl());
+		
+		myKeyControl = new KeyControl();
+		canvas.addKeyListener(myKeyControl);
 
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.pack();
@@ -89,35 +91,22 @@ public class SimpleGame implements Runnable {
 	}
 
 	private class KeyControl extends KeyAdapter {
-
+		
+		boolean movingLeft = false;
+		boolean movingRight = false;
+		boolean movingUp = false;
 		@Override
 		public void keyPressed(KeyEvent ke) {
 			if (ke.getKeyCode() == VK_UP) {
+					movingUp = true;
+			
+			} if (ke.getKeyCode() == VK_LEFT) {
+					movingLeft = true;
 
-				System.out.println("UP!: ");
-				shapeShip = moveShape(shapeShip, shapeHeadPosition, 15);
-				shapeShip = isWindowsEnds(shapeShip.getBounds().getLocation(),
-						shapeShip);
+			} if (ke.getKeyCode() == VK_RIGHT) {
+					movingRight = true;
 
-			} else if (ke.getKeyCode() == VK_LEFT) {
-				changeHeadShapePos(false);
-				System.out.println("LEWA: " + shapeHeadPosition);
-				shapeShip = AffineTransform.getRotateInstance(
-						11 * Math.toRadians(30),
-						shapeShip.getBounds2D().getCenterX(),
-						shapeShip.getBounds2D().getCenterY())
-						.createTransformedShape(shapeShip);
-
-			} else if (ke.getKeyCode() == VK_RIGHT) {
-				changeHeadShapePos(true);
-				System.out.println("PRAWA: " + shapeHeadPosition);
-				shapeShip = AffineTransform.getRotateInstance(
-						Math.toRadians(30),
-						shapeShip.getBounds2D().getCenterX(),
-						shapeShip.getBounds2D().getCenterY())
-						.createTransformedShape(shapeShip);
-
-			} else if (ke.getKeyCode() == VK_SPACE) {
+			} if (ke.getKeyCode() == VK_SPACE) {
 				shootBullet(shapeHeadPosition);
 				System.out.println("WOWWW");
 				shooting = true;
@@ -125,6 +114,19 @@ public class SimpleGame implements Runnable {
 
 			}
 		}
+		public void keyReleased(KeyEvent ke){
+			if (ke.getKeyCode() == VK_UP) {
+				movingUp = false;
+		
+		} if (ke.getKeyCode() == VK_LEFT) {
+				movingLeft = false;
+
+		} if (ke.getKeyCode() == VK_RIGHT) {
+				movingRight = false;
+
+		}
+		}
+
 
 		void shootBullet(int direction) {
 
@@ -142,21 +144,7 @@ public class SimpleGame implements Runnable {
 
 		}
 
-		void changeHeadShapePos(boolean rightArrow) {
-			if (rightArrow == true) {
-				if (shapeHeadPosition < 12) {
-					shapeHeadPosition += 1;
-				} else {
-					shapeHeadPosition = 1;
-				}
-			} else {
-				if (shapeHeadPosition > 1) {
-					shapeHeadPosition -= 1;
-				} else {
-					shapeHeadPosition = 12;
-				}
-			}
-		}
+
 
 	}
 
@@ -197,7 +185,48 @@ public class SimpleGame implements Runnable {
 			}
 		}
 	}
+	 void moving(){
+		if(myKeyControl.movingLeft){
+			changeHeadShapePos(false);
+			System.out.println("LEWA: " + shapeHeadPosition);
+			shapeShip = AffineTransform.getRotateInstance(
+					11 * Math.toRadians(30),
+					shapeShip.getBounds2D().getCenterX(),
+					shapeShip.getBounds2D().getCenterY())
+					.createTransformedShape(shapeShip);	
+		}
+		if(myKeyControl.movingRight){
+			changeHeadShapePos(true);
+			System.out.println("PRAWA: " + shapeHeadPosition);
+			shapeShip = AffineTransform.getRotateInstance(
+					Math.toRadians(30),
+					shapeShip.getBounds2D().getCenterX(),
+					shapeShip.getBounds2D().getCenterY())
+					.createTransformedShape(shapeShip);
+		}
+		if(myKeyControl.movingUp){
+			System.out.println("UP!: ");
+			shapeShip = moveShape(shapeShip, shapeHeadPosition, 5);
+			shapeShip = isWindowsEnds(shapeShip.getBounds().getLocation(),
+					shapeShip);
 
+		}
+	}
+		void changeHeadShapePos(boolean rightArrow) {
+			if (rightArrow == true) {
+				if (shapeHeadPosition < 12) {
+					shapeHeadPosition += 1;
+				} else {
+					shapeHeadPosition = 1;
+				}
+			} else {
+				if (shapeHeadPosition > 1) {
+					shapeHeadPosition -= 1;
+				} else {
+					shapeHeadPosition = 12;
+				}
+			}
+		}
 	// Method used just for preparing main window of game
 
 	private void render() {
@@ -215,7 +244,9 @@ public class SimpleGame implements Runnable {
 	// Main updating method. All changes are here.
 	protected void update(int deltaTime) {
 		x += deltaTime * 0.2;
-
+	
+			moving();
+		
 		if (shooting) {
 			int temp = shapeHeadPosition;
 			shapeBullet = moveShape(shapeBullet, temp, 10);
@@ -367,13 +398,13 @@ public class SimpleGame implements Runnable {
 		 */
 		private static final long serialVersionUID = 1L;
 
-		public SpaceShip(int x1, int y1, int x2, int y2, int x3, int y3) {
-			super(new int[] { x1, x2, x3 }, new int[] { y1, y2, y3 }, 3);
+		public SpaceShip(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4) {
+			super(new int[] { x1, x2, x3, x4 }, new int[] { y1, y2, y3, y4}, 4);
 		}
 
 		public SpaceShip(int tableX[], int tableY[]) {
 			this(tableX[0], tableY[0], tableX[1], tableY[1], tableX[2],
-					tableY[2]);
+					tableY[2], tableX[3], tableY[3]);
 		}
 
 	}
