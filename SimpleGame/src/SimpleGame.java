@@ -11,6 +11,8 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Shape;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
@@ -25,23 +27,40 @@ import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
 import java.util.Random;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 public class SimpleGame implements Runnable {
 
 	final int WIDTH = 1000;
 	final int HEIGHT = 700;
-	final int shapeTableX[] = new int[] {  480, 500, 520, 500};
-	final int shapeTableY[] = new int[] {  370, 360, 370, 330};
+	final int shapeTableX[] = new int[] { 480, 500, 520, 500 };
+	final int shapeTableY[] = new int[] { 370, 360, 370, 330 };
 	int shapeHeadPosition = 1; // 1-UP // 2-UP-RRIGHT-ONE //3-UP-RIGHT-TWO
 								// //4-RIGHT //5-DOWN-GIGHT-ONE
 								// 6-DOWN-RIGHT-TWO // 7-DOWN// 8-DOWN-LEFT-ONE
 								// // 9-DOWN-LEFT-TWO //10-LEFT
 								// //11-UP-LEFT-ONE//12-UP-LEFT-TWO
-
+	int shipHeadDegrees = 0; // This will be next shapeHeadPosition, but this
+								// time using degrees
 	boolean shooting = false;
 	int shootingTime;
+	int numberOfComets = 12;
+	boolean killingComplete = true; // this tells when method killComet is
+									// active
+	long desiredFPS = 60;
+	long desiredDeltaLoop = (1000 * 1000 * 1000) / desiredFPS;
+	long fps;
+
+	boolean running = false;
+	boolean gamePaused = false;
+
 
 	JFrame frame;
 	Canvas canvas;
@@ -53,10 +72,13 @@ public class SimpleGame implements Runnable {
 	ArrayList<Shape> cometList;
 	ArrayList<Integer> cometDirectionList;
 	KeyControl myKeyControl;
+	Thread gameThread;
 	boolean showComet = true;
 	int howManyKilled;
 
-	public SimpleGame() {
+	public SimpleGame()  {
+		gameThread = new Thread(this);
+
 		frame = new JFrame("Basic Asteroid Game");
 
 		JPanel panel = (JPanel) frame.getContentPane();
@@ -68,10 +90,11 @@ public class SimpleGame implements Runnable {
 		canvas.setIgnoreRepaint(true);
 
 		panel.add(canvas);
-		
+
 		myKeyControl = new KeyControl();
 		canvas.addKeyListener(myKeyControl);
 
+		frame.setJMenuBar(addMenuBar());
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.pack();
 		frame.setResizable(false);
@@ -84,29 +107,82 @@ public class SimpleGame implements Runnable {
 
 		shapeShip = new SpaceShip(shapeTableX, shapeTableY);
 		cometList = new ArrayList<Shape>();
-		cometList = this.createCometList(cometList, 8);
+		cometList = this.createCometList(cometList, numberOfComets);
 		cometDirectionList = new ArrayList<Integer>();
-		cometDirectionList = this.getRandDirections(cometDirectionList, 9);
+		cometDirectionList = this.getRandDirections(cometDirectionList,
+				numberOfComets);
 
 	}
 
+	private JMenuBar addMenuBar() {
+		final JMenuBar menuBar;
+		JMenu menu, submenu;
+		JMenuItem menuItemStart;
+		JMenuItem menuItemPause;
+		// Create the menu bar.
+		menuBar = new JMenuBar();
+
+		menu = new JMenu("Game");
+		menu.setMnemonic(KeyEvent.VK_A);
+		menu.getAccessibleContext().setAccessibleDescription("Game menu.");
+		menuBar.add(menu);
+
+		menuItemStart = new JMenuItem("Start", KeyEvent.VK_T);
+		menuItemStart.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if ("Start".equals(e.getActionCommand())) {
+					if(gamePaused){
+						gamePaused = false;
+					}else{
+					running = true;
+					gameThread.start();				
+					canvas.requestFocus();
+					}
+				}
+
+			}
+
+		});
+		menuItemPause = new JMenuItem("Pause", KeyEvent.VK_Q);
+		menuItemPause.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if ("Pause".equals(e.getActionCommand())) {
+					gamePaused = true;
+				}
+
+			}
+
+		});
+		menu.add(menuItemStart);
+		menu.add(menuItemPause);
+		return menuBar;
+	}
+
 	private class KeyControl extends KeyAdapter {
-		
+
 		boolean movingLeft = false;
 		boolean movingRight = false;
 		boolean movingUp = false;
+
 		@Override
 		public void keyPressed(KeyEvent ke) {
 			if (ke.getKeyCode() == VK_UP) {
-					movingUp = true;
-			
-			} if (ke.getKeyCode() == VK_LEFT) {
-					movingLeft = true;
+				movingUp = true;
 
-			} if (ke.getKeyCode() == VK_RIGHT) {
-					movingRight = true;
+			}
+			if (ke.getKeyCode() == VK_LEFT) {
+				movingLeft = true;
 
-			} if (ke.getKeyCode() == VK_SPACE) {
+			}
+			if (ke.getKeyCode() == VK_RIGHT) {
+				movingRight = true;
+
+			}
+			if (ke.getKeyCode() == VK_SPACE) {
 				shootBullet(shapeHeadPosition);
 				System.out.println("WOWWW");
 				shooting = true;
@@ -114,19 +190,21 @@ public class SimpleGame implements Runnable {
 
 			}
 		}
-		public void keyReleased(KeyEvent ke){
+
+		public void keyReleased(KeyEvent ke) {
 			if (ke.getKeyCode() == VK_UP) {
 				movingUp = false;
-		
-		} if (ke.getKeyCode() == VK_LEFT) {
+
+			}
+			if (ke.getKeyCode() == VK_LEFT) {
 				movingLeft = false;
 
-		} if (ke.getKeyCode() == VK_RIGHT) {
+			}
+			if (ke.getKeyCode() == VK_RIGHT) {
 				movingRight = false;
 
+			}
 		}
-		}
-
 
 		void shootBullet(int direction) {
 
@@ -144,25 +222,28 @@ public class SimpleGame implements Runnable {
 
 		}
 
-
-
 	}
 
-	long desiredFPS = 60;
-	long desiredDeltaLoop = (1000 * 1000 * 1000) / desiredFPS;
-
-	boolean running = true;
-
+	// main loop for the game
 	public void run() {
-
 		long beginLoopTime;
 		long endLoopTime;
 		long currentUpdateTime = System.nanoTime();
 		long lastUpdateTime;
 		long deltaLoop;
+
+		
 		// this is main loop for our game where we setup frame rate for later
 		// use in update method
 		while (running) {
+			while(gamePaused){
+				try {
+					Thread.currentThread().sleep(100);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 			beginLoopTime = System.nanoTime();
 
 			render();
@@ -173,9 +254,12 @@ public class SimpleGame implements Runnable {
 
 			endLoopTime = System.nanoTime();
 			deltaLoop = endLoopTime - beginLoopTime;
-
+			if(deltaLoop > 0){
+			fps = 100000000/ deltaLoop;
+			}
 			if (deltaLoop > desiredDeltaLoop) {
 				// Do nothing. Frame Rate are low now!.
+				System.out.println("low FPS: " + fps);
 			} else {
 				try {
 					Thread.sleep((desiredDeltaLoop - deltaLoop) / (1000 * 1000));
@@ -183,51 +267,62 @@ public class SimpleGame implements Runnable {
 					// Do nothing
 				}
 			}
+
 		}
+
 	}
-	 void moving(){
-		if(myKeyControl.movingLeft){
+
+	void movingShip() {
+
+		double tempTime = 0;
+		if (myKeyControl.movingLeft) {
+
 			changeHeadShapePos(false);
 			System.out.println("LEWA: " + shapeHeadPosition);
-			shapeShip = AffineTransform.getRotateInstance(
-					11 * Math.toRadians(30),
-					shapeShip.getBounds2D().getCenterX(),
-					shapeShip.getBounds2D().getCenterY())
-					.createTransformedShape(shapeShip);	
-		}
-		if(myKeyControl.movingRight){
-			changeHeadShapePos(true);
-			System.out.println("PRAWA: " + shapeHeadPosition);
-			shapeShip = AffineTransform.getRotateInstance(
-					Math.toRadians(30),
+			shapeShip = AffineTransform.getRotateInstance(Math.toRadians(-3),
 					shapeShip.getBounds2D().getCenterX(),
 					shapeShip.getBounds2D().getCenterY())
 					.createTransformedShape(shapeShip);
+
 		}
-		if(myKeyControl.movingUp){
+		if (myKeyControl.movingRight) {
+			changeHeadShapePos(true);
+			System.out.println("PRAWA: " + shapeHeadPosition);
+			shapeShip = AffineTransform.getRotateInstance(Math.toRadians(3),
+					shapeShip.getBounds2D().getCenterX(),
+					shapeShip.getBounds2D().getCenterY())
+					.createTransformedShape(shapeShip);
+
+		}
+		if (myKeyControl.movingUp) {
 			System.out.println("UP!: ");
-			shapeShip = moveShape(shapeShip, shapeHeadPosition, 5);
+			shapeShip = moveShape(shapeShip, 9);
 			shapeShip = isWindowsEnds(shapeShip.getBounds().getLocation(),
 					shapeShip);
 
 		}
 	}
-		void changeHeadShapePos(boolean rightArrow) {
-			if (rightArrow == true) {
-				if (shapeHeadPosition < 12) {
-					shapeHeadPosition += 1;
-				} else {
-					shapeHeadPosition = 1;
-				}
+
+	// This metod is used to measure angle of the ship
+	void changeHeadShapePos(boolean rightArrow) {
+		if (rightArrow == true) {
+			if (shipHeadDegrees < 357) {
+				shipHeadDegrees += 3;
 			} else {
-				if (shapeHeadPosition > 1) {
-					shapeHeadPosition -= 1;
-				} else {
-					shapeHeadPosition = 12;
-				}
+				shipHeadDegrees = 0;
+			}
+		} else {
+			if (shipHeadDegrees > 2) {
+				shipHeadDegrees -= 3;
+			} else {
+				shipHeadDegrees = 357;
 			}
 		}
-	// Method used just for preparing main window of game
+	}
+
+	// Method used just for preparing main window of game and starts
+	// render(Graphics2D) to draw
+	// all elements of game
 
 	private void render() {
 		Graphics2D g = (Graphics2D) bufferStrategy.getDrawGraphics();
@@ -244,16 +339,15 @@ public class SimpleGame implements Runnable {
 	// Main updating method. All changes are here.
 	protected void update(int deltaTime) {
 		x += deltaTime * 0.2;
-	
-			moving();
-		
+
 		if (shooting) {
 			int temp = shapeHeadPosition;
-			shapeBullet = moveShape(shapeBullet, temp, 10);
+			shapeBullet = moveShape(shapeBullet, 10);
 			shootingTime++;
 			// this loop check if bullet hits comet
 			for (int i = 0; i < cometList.size(); i++) {
 				if (testIntersection(cometList.get(i), shapeBullet)) {
+					killingComplete = false;
 					this.killComet(i);
 					this.howManyKilled++;
 				}
@@ -262,12 +356,15 @@ public class SimpleGame implements Runnable {
 
 		}
 		// check if another comet hits comet
-		for (int i = 0; i < cometList.size(); i++) {
-			for (int y = 0; y < cometList.size(); y++) {
-				if (cometList.get(i) != cometList.get(y)) {
-					if (testIntersection(cometList.get(i), cometList.get(y))) {
-						this.killComet(i);
-						this.howManyKilled++;
+		if (killingComplete == true) {
+			for (int i = 0; i < cometList.size(); i++) {
+				for (int y = 0; y < cometList.size(); y++) {
+					if (cometList.get(i) != cometList.get(y)) {
+						if (testIntersection(cometList.get(i), cometList.get(y))) {
+							killingComplete = false;
+							this.killComet(i);
+							this.howManyKilled++;
+						}
 					}
 				}
 			}
@@ -298,6 +395,7 @@ public class SimpleGame implements Runnable {
 			shooting = false;
 
 		}
+		movingShip();
 
 	}
 
@@ -310,6 +408,10 @@ public class SimpleGame implements Runnable {
 		g.setColor(Color.yellow);
 		// g.fillRect((int) x, 0, 50, 50); //TEST yellow rectangle moving in
 		// space
+		
+		g.drawString(String.valueOf(fps)+ " fps", 900, 50);
+		g.drawString("angle: "+String.valueOf(shipHeadDegrees) +" deg.", 900, 30);
+
 		// drawing from list of comets
 		if (true) {
 			for (Shape sh : cometList) {
@@ -327,7 +429,7 @@ public class SimpleGame implements Runnable {
 		cometList.trimToSize();
 		cometDirectionList.remove(cometId);
 		cometDirectionList.trimToSize();
-
+		killingComplete = true;
 	}
 
 	// method used to draw gamer ship
@@ -398,8 +500,9 @@ public class SimpleGame implements Runnable {
 		 */
 		private static final long serialVersionUID = 1L;
 
-		public SpaceShip(int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4) {
-			super(new int[] { x1, x2, x3, x4 }, new int[] { y1, y2, y3, y4}, 4);
+		public SpaceShip(int x1, int y1, int x2, int y2, int x3, int y3,
+				int x4, int y4) {
+			super(new int[] { x1, x2, x3, x4 }, new int[] { y1, y2, y3, y4 }, 4);
 		}
 
 		public SpaceShip(int tableX[], int tableY[]) {
@@ -553,6 +656,69 @@ public class SimpleGame implements Runnable {
 
 	}
 
+	public Shape moveShape(Shape shape, int dist) {
+		AffineTransform at;
+		if (shipHeadDegrees == 0) {
+			at = new AffineTransform();
+
+			at.translate(0, -dist);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees > 0 & shipHeadDegrees < 90) {
+			at = new AffineTransform();
+			int tempDistY = dist - (shipHeadDegrees / 10);
+			int tempDistX = shipHeadDegrees / 10;
+			at.translate(tempDistX, -tempDistY);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees == 90) {
+			at = new AffineTransform();
+
+			at.translate(dist, 0);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees > 90 & shipHeadDegrees < 180) {
+			at = new AffineTransform();
+			int tempDist = ((shipHeadDegrees - 90) / 10);
+			int tempDistX = dist - ((shipHeadDegrees - 90) / 10);
+			at.translate(tempDistX, tempDist);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees == 180) {
+			at = new AffineTransform();
+
+			at.translate(0, dist);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees > 180 & shipHeadDegrees < 270) {
+			at = new AffineTransform();
+			int tempDist = dist - ((shipHeadDegrees - 180) / 10);
+			int tempDistX = ((shipHeadDegrees - 180) / 10);
+			at.translate(-tempDistX, tempDist);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees == 270) {
+			at = new AffineTransform();
+
+			at.translate(-dist, 0);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees > 270 & shipHeadDegrees < 360) {
+			at = new AffineTransform();
+			int tempDist = ((shipHeadDegrees - 270) / 10);
+			int tempDistX = dist - ((shipHeadDegrees - 270) / 10);
+			at.translate(-tempDistX, -tempDist);
+			shape = at.createTransformedShape(shape);
+		}
+		if (shipHeadDegrees == 360) {
+			at = new AffineTransform();
+
+			at.translate(0, -dist);
+			shape = at.createTransformedShape(shape);
+		}
+		return shape;
+	}
+
 	// method using to move all shape using AffineTransform function
 	public Shape moveShape(Shape shape, int direction, int dist) {
 		AffineTransform at;
@@ -645,7 +811,7 @@ public class SimpleGame implements Runnable {
 
 	public static void main(String[] args) {
 		SimpleGame ex = new SimpleGame();
-		new Thread(ex).start();
+		// new Thread(ex).start();
 	}
 
 }
