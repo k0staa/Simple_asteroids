@@ -4,6 +4,8 @@
  * 
  */
 
+import java.applet.Applet;
+import java.applet.AudioClip;
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -24,59 +26,68 @@ import static java.awt.event.KeyEvent.VK_UP;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.image.BufferStrategy;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Random;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
+import javax.swing.JApplet;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.KeyStroke;
 
 public class SimpleGame implements Runnable {
 
 	final int WIDTH = 1000;
 	final int HEIGHT = 700;
-	final int shapeTableX[] = new int[] { 480, 500, 520, 500 };
-	final int shapeTableY[] = new int[] { 370, 360, 370, 330 };
-	int shapeHeadPosition = 1; // 1-UP // 2-UP-RRIGHT-ONE //3-UP-RIGHT-TWO
-								// //4-RIGHT //5-DOWN-GIGHT-ONE
-								// 6-DOWN-RIGHT-TWO // 7-DOWN// 8-DOWN-LEFT-ONE
-								// // 9-DOWN-LEFT-TWO //10-LEFT
-								// //11-UP-LEFT-ONE//12-UP-LEFT-TWO
-	int shipHeadDegrees = 0; // This will be next shapeHeadPosition, but this
-								// time using degrees
-	boolean shooting = false;
-	int shootingTime;
-	int numberOfComets = 12;
-	boolean killingComplete = true; // this tells when method killComet is
+	final int shipShapeTableX[] = new int[] { 480, 500, 520, 500 }; // Table of
+																	// x points
+																	// of ship
+																	// shape
+	final int shipShapeTableY[] = new int[] { 370, 360, 370, 330 }; // Table of
+																	// y points
+																	// of ship
+																	// shape
+	int shipHeadDegrees = 0; // This is used to measure angle of ship using
+								// degrees
+	boolean shooting = false; // Used to draw bullets in render method
+	int shootingTime; // Time duration of bullet life
+	int numberOfComets = 12; // Number of comets in game
+	boolean killingComplete = true; // This tells when method killComet is
 									// active
-	long desiredFPS = 60;
+	boolean explode = false; // This tells when bullet hit and destroy comet
+
+	long desiredFPS = 70;
 	long desiredDeltaLoop = (1000 * 1000 * 1000) / desiredFPS;
 	long fps;
 
-	boolean running = false;
-	boolean gamePaused = false;
-
-
+	boolean running = false; // Main loop boolean
+	boolean gamePaused = false; // Boolean used for pausing game
+	boolean gameOver = false; // tells if game is already played and finish;
+	int howManyKilled; // Counting how many comets been destroyed
+	int pointsGained;
+	// SOUNDS
+	AudioClip laser;
+	AudioClip cometExplode;
+	AudioClip music;
+	// FRAME AND GRAPHICS
 	JFrame frame;
 	Canvas canvas;
 	BufferStrategy bufferStrategy;
+	// GAME OBJECTS
 	Shape shapeShip;
 	Shape shapeBullet;
-	// test
 	Shape comet;
+	ArrayList<Shape> explosionParticles;
 	ArrayList<Shape> cometList;
 	ArrayList<Integer> cometDirectionList;
+	ArrayList<Integer> particlesExplosionTime;
 	KeyControl myKeyControl;
 	Thread gameThread;
-	boolean showComet = true;
-	int howManyKilled;
 
-	public SimpleGame()  {
+	public SimpleGame() {
 		gameThread = new Thread(this);
 
 		frame = new JFrame("Basic Asteroid Game");
@@ -105,27 +116,46 @@ public class SimpleGame implements Runnable {
 
 		canvas.requestFocus();
 
-		shapeShip = new SpaceShip(shapeTableX, shapeTableY);
+		URL sndLaser = this.getClass().getResource("laser.wav");
+		URL sndMusic = this.getClass().getResource("music.wav");
+		URL sndExplode = this.getClass().getResource("explode.wav");
+		laser = Applet.newAudioClip(sndLaser);
+		cometExplode = Applet.newAudioClip(sndExplode);
+		music = Applet.newAudioClip(sndMusic);
+		music.loop(); 
+		
+
+		shapeShip = new SpaceShip(shipShapeTableX, shipShapeTableY);
+		explosionParticles = new ArrayList<Shape>();
 		cometList = new ArrayList<Shape>();
-		cometList = this.createCometList(cometList, numberOfComets);
+		cometList = createRandCometList(cometList, numberOfComets);
 		cometDirectionList = new ArrayList<Integer>();
 		cometDirectionList = this.getRandDirections(cometDirectionList,
 				numberOfComets);
+		particlesExplosionTime = new ArrayList<Integer>();
 
 	}
 
+	// Create the menu bar.
 	private JMenuBar addMenuBar() {
 		final JMenuBar menuBar;
-		JMenu menu, submenu;
+		JMenu menu_game, menu_help;
 		JMenuItem menuItemStart;
 		JMenuItem menuItemPause;
-		// Create the menu bar.
+		JMenuItem menuItemAbout;
+		JMenuItem menuItemHelp;
+
 		menuBar = new JMenuBar();
 
-		menu = new JMenu("Game");
-		menu.setMnemonic(KeyEvent.VK_A);
-		menu.getAccessibleContext().setAccessibleDescription("Game menu.");
-		menuBar.add(menu);
+		menu_game = new JMenu("Game");
+		menu_game.setMnemonic(KeyEvent.VK_A);
+		menu_game.getAccessibleContext().setAccessibleDescription("Game menu.");
+
+		menu_help = new JMenu("Help");
+		menu_help.getAccessibleContext().setAccessibleDescription("Help menu.");
+
+		menuBar.add(menu_game);
+		menuBar.add(menu_help);
 
 		menuItemStart = new JMenuItem("Start", KeyEvent.VK_T);
 		menuItemStart.addActionListener(new ActionListener() {
@@ -133,12 +163,33 @@ public class SimpleGame implements Runnable {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if ("Start".equals(e.getActionCommand())) {
-					if(gamePaused){
+					if (gamePaused & gameOver == false) {
 						gamePaused = false;
-					}else{
-					running = true;
-					gameThread.start();				
-					canvas.requestFocus();
+					} else if (gameOver) {
+						shapeShip = new SpaceShip(shipShapeTableX,
+								shipShapeTableY);
+						explosionParticles = new ArrayList<Shape>();
+						cometList = new ArrayList<Shape>();
+						cometList = createRandCometList(cometList,
+								numberOfComets);
+						cometDirectionList = new ArrayList<Integer>();
+						cometDirectionList = getRandDirections(
+								cometDirectionList, numberOfComets);
+						particlesExplosionTime = new ArrayList<Integer>();
+						shipHeadDegrees = 0;
+						pointsGained = 0;
+						myKeyControl.movingLeft = false;
+						myKeyControl.movingRight = false;
+						myKeyControl.movingUp = false;
+
+						gameOver = false;
+						gamePaused = false;
+
+					} else {
+
+						running = true;
+						gameThread.start();
+						canvas.requestFocus();
 					}
 				}
 
@@ -157,8 +208,37 @@ public class SimpleGame implements Runnable {
 			}
 
 		});
-		menu.add(menuItemStart);
-		menu.add(menuItemPause);
+		menuItemAbout = new JMenuItem("About", KeyEvent.VK_H);
+		menuItemAbout.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				String aboutText = "Asteroid game ver 0.1 \nCreated by Michal Kostewicz";
+				JOptionPane.showMessageDialog(frame, aboutText);
+
+			}
+
+		});
+		menuItemHelp = new JMenuItem("Game Help", KeyEvent.VK_H);
+		menuItemHelp.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				String aboutText = "Aim of this game:\n"
+						+ "-destroy comets and gain points\n"
+						+ "-don't get kill\n" + "-have fun\n" + "Stering:\n"
+						+ "-Left arrow to trun left\n"
+						+ "-Right arrow to turn right\n"
+						+ "Up arrow to thrust!";
+				JOptionPane.showMessageDialog(frame, aboutText);
+
+			}
+
+		});
+		menu_help.add(menuItemHelp);
+		menu_help.add(menuItemAbout);
+		menu_game.add(menuItemStart);
+		menu_game.add(menuItemPause);
 		return menuBar;
 	}
 
@@ -183,8 +263,9 @@ public class SimpleGame implements Runnable {
 
 			}
 			if (ke.getKeyCode() == VK_SPACE) {
-				shootBullet(shapeHeadPosition);
+				shootBullet();
 				System.out.println("WOWWW");
+				laser.play();
 				shooting = true;
 				shootingTime = 0;
 
@@ -206,22 +287,45 @@ public class SimpleGame implements Runnable {
 			}
 		}
 
-		void shootBullet(int direction) {
+	}
 
+	// metod creates bullet after pressing SPACE key
+	void shootBullet() {
+
+		int bulletTableX[] = new int[] {
+				(int) shapeShip.getBounds().getCenterX(),
+				((int) shapeShip.getBounds().getCenterX()) - 2,
+				(int) shapeShip.getBounds().getCenterX(),
+				((int) shapeShip.getBounds().getCenterX()) + 2 };
+		int bulletTableY[] = new int[] {
+				(int) shapeShip.getBounds().getCenterY(),
+				((int) shapeShip.getBounds().getCenterY()) - 2,
+				((int) shapeShip.getBounds().getCenterY()) - 4,
+				((int) shapeShip.getBounds().getCenterY()) - 2 };
+		shapeBullet = new Bullet(bulletTableX, bulletTableY);
+
+	}
+
+	// metod creates particles when comet explode. Particles looks same as
+	// bullets but there is more of them.
+	void addExplosionParticles(Shape destroyedComet) {
+		Shape temp;
+
+		for (int i = 0; i < 13; i++) {
 			int bulletTableX[] = new int[] {
-					(int) shapeShip.getBounds().getCenterX(),
-					((int) shapeShip.getBounds().getCenterX()) - 2,
-					(int) shapeShip.getBounds().getCenterX(),
-					((int) shapeShip.getBounds().getCenterX()) + 2 };
+					(int) destroyedComet.getBounds().getCenterX(),
+					((int) destroyedComet.getBounds().getCenterX()) - 2,
+					(int) destroyedComet.getBounds().getCenterX(),
+					((int) destroyedComet.getBounds().getCenterX()) + 2 };
 			int bulletTableY[] = new int[] {
-					(int) shapeShip.getBounds().getCenterY(),
-					((int) shapeShip.getBounds().getCenterY()) - 2,
-					((int) shapeShip.getBounds().getCenterY()) - 4,
-					((int) shapeShip.getBounds().getCenterY()) - 2 };
-			shapeBullet = new Bullet(bulletTableX, bulletTableY);
-
+					(int) destroyedComet.getBounds().getCenterY(),
+					((int) destroyedComet.getBounds().getCenterY()) - 2,
+					((int) destroyedComet.getBounds().getCenterY()) - 4,
+					((int) destroyedComet.getBounds().getCenterY()) - 2 };
+			temp = new Bullet(bulletTableX, bulletTableY);
+			explosionParticles.add(i, temp);
+			particlesExplosionTime.add(i, 0);
 		}
-
 	}
 
 	// main loop for the game
@@ -232,11 +336,10 @@ public class SimpleGame implements Runnable {
 		long lastUpdateTime;
 		long deltaLoop;
 
-		
 		// this is main loop for our game where we setup frame rate for later
 		// use in update method
 		while (running) {
-			while(gamePaused){
+			while (gamePaused) {
 				try {
 					Thread.currentThread().sleep(100);
 				} catch (InterruptedException e) {
@@ -254,9 +357,10 @@ public class SimpleGame implements Runnable {
 
 			endLoopTime = System.nanoTime();
 			deltaLoop = endLoopTime - beginLoopTime;
-			if(deltaLoop > 0){
-			fps = 100000000/ deltaLoop;
+			if (deltaLoop > 0) {
+				fps = 100000000 / deltaLoop;
 			}
+			// This loop is to maintain proper FPS (default 60)
 			if (deltaLoop > desiredDeltaLoop) {
 				// Do nothing. Frame Rate are low now!.
 				System.out.println("low FPS: " + fps);
@@ -273,12 +377,9 @@ public class SimpleGame implements Runnable {
 	}
 
 	void movingShip() {
-
-		double tempTime = 0;
 		if (myKeyControl.movingLeft) {
 
 			changeHeadShapePos(false);
-			System.out.println("LEWA: " + shapeHeadPosition);
 			shapeShip = AffineTransform.getRotateInstance(Math.toRadians(-3),
 					shapeShip.getBounds2D().getCenterX(),
 					shapeShip.getBounds2D().getCenterY())
@@ -287,7 +388,7 @@ public class SimpleGame implements Runnable {
 		}
 		if (myKeyControl.movingRight) {
 			changeHeadShapePos(true);
-			System.out.println("PRAWA: " + shapeHeadPosition);
+
 			shapeShip = AffineTransform.getRotateInstance(Math.toRadians(3),
 					shapeShip.getBounds2D().getCenterX(),
 					shapeShip.getBounds2D().getCenterY())
@@ -341,15 +442,23 @@ public class SimpleGame implements Runnable {
 		x += deltaTime * 0.2;
 
 		if (shooting) {
-			int temp = shapeHeadPosition;
+
 			shapeBullet = moveShape(shapeBullet, 10);
 			shootingTime++;
 			// this loop check if bullet hits comet
 			for (int i = 0; i < cometList.size(); i++) {
 				if (testIntersection(cometList.get(i), shapeBullet)) {
+					if (cometList.get(i) != null) {
+						this.addExplosionParticles(cometList.get(i));
+					}
+					this.explode = true;
+					cometExplode.play(); // explosion sound play
 					killingComplete = false;
-					this.killComet(i);
+					this.destroyComet(i); // THIS SOMETIMES MOVING OUT OF
+											// cometList SIZE ! NEEDS TO BE
+											// MOVED OUTSIDE OF THIS LOOP
 					this.howManyKilled++;
+					this.pointsGained += 5;
 				}
 
 			}
@@ -361,11 +470,41 @@ public class SimpleGame implements Runnable {
 				for (int y = 0; y < cometList.size(); y++) {
 					if (cometList.get(i) != cometList.get(y)) {
 						if (testIntersection(cometList.get(i), cometList.get(y))) {
+							this.addExplosionParticles(cometList.get(i));
+							this.explode = true;
 							killingComplete = false;
-							this.killComet(i);
+							this.destroyComet(i); // THIS SOMETIMES MOVING OUT
+													// OF cometList SIZE ! NEEDS
+													// TO BE MOVED OUTSIDE OF
+													// THIS LOOP
 							this.howManyKilled++;
 						}
 					}
+				}
+			}
+		}
+		for (int i = 0; i < cometList.size(); i++) {
+			if (testIntersection(cometList.get(i), shapeShip)) {
+				gameOver = true;
+				gamePaused = true;
+				JOptionPane.showMessageDialog(frame, "GAME OVER!");
+			}
+		}
+		// this loop is for moving explosion Particles.
+		if (explode) {
+			int x = 0;
+			for (int i = 0; i < explosionParticles.size(); i++) {
+				explosionParticles.set(i,
+						moveShape(explosionParticles.get(i), x, 1));
+				if (x > 12) {
+					x = 0;
+				} else
+					x++;
+				particlesExplosionTime
+						.set(i, particlesExplosionTime.get(i) + 1);
+				if (particlesExplosionTime.get(i) > 70) {
+					explosionParticles.remove(i);
+					particlesExplosionTime.remove(i);
 				}
 			}
 		}
@@ -380,10 +519,10 @@ public class SimpleGame implements Runnable {
 							cometList.get(i)));
 
 		}
-		while (x > 700) {
+		while (x > 500) {
 			x = 0;
 			if (howManyKilled > 0) {
-				cometList = this.createCometList(cometList, 1);
+				cometList = this.createRandCometList(cometList, 1);
 				cometDirectionList = this.getRandDirections(cometDirectionList,
 						1);
 				howManyKilled--;
@@ -405,14 +544,22 @@ public class SimpleGame implements Runnable {
 		if (shooting) {
 			drawBullet(g);
 		}
+		if (explode) {
+			for (Shape sh : explosionParticles) {
+				drawComet(g, sh);
+			}
+		}
 		g.setColor(Color.yellow);
-		// g.fillRect((int) x, 0, 50, 50); //TEST yellow rectangle moving in
-		// space
-		
-		g.drawString(String.valueOf(fps)+ " fps", 900, 50);
-		g.drawString("angle: "+String.valueOf(shipHeadDegrees) +" deg.", 900, 30);
-
-		// drawing from list of comets
+		g.drawString(String.valueOf(fps) + " fps", 900, 50); // Showing string
+																// with FPS on
+																// screen
+		g.drawString("angle: " + String.valueOf(shipHeadDegrees) + " deg.",
+				900, 30); // Showing angle of the ship
+		g.setColor(Color.red);
+		g.drawString("SCORE:: " + String.valueOf(pointsGained), 900, 10); // Showing
+																			// player
+																			// score
+		// Drawing from list of comets
 		if (true) {
 			for (Shape sh : cometList) {
 				drawComet(g, sh);
@@ -421,9 +568,8 @@ public class SimpleGame implements Runnable {
 		}
 	}
 
-	// method used for killing comets when bullet hits them
-
-	private void killComet(int cometId) {
+	// method used for destroying comets when bullet hits them
+	private void destroyComet(int cometId) {
 		System.out.println("Zabijam " + cometId);
 		cometList.remove(cometId);
 		cometList.trimToSize();
@@ -433,7 +579,6 @@ public class SimpleGame implements Runnable {
 	}
 
 	// method used to draw gamer ship
-
 	private void drawKillerPolygon(Graphics2D g2) {
 		g2.setColor(Color.red);
 		g2.draw(shapeShip);
@@ -442,7 +587,6 @@ public class SimpleGame implements Runnable {
 	}
 
 	// metod used to draw bullet when shooting
-
 	private void drawBullet(Graphics2D g2) {
 		g2.setColor(Color.yellow);
 		g2.draw(shapeBullet);
@@ -556,42 +700,68 @@ public class SimpleGame implements Runnable {
 	}
 
 	// method that creates Array List of comets (you can chose how many)
-	// using random numbers ---THIS METOD ISNT WORKING VERY WELL---
+	// using random position
+	private ArrayList<Shape> createRandCometList(
+			ArrayList<Shape> finalShapeList, int howManyComets) {
 
-	private ArrayList<Shape> createRandCometList(int howManyComets) {
-		ArrayList<Shape> cList = new ArrayList<Shape>();
+		// Random generating different numbers
 		Random generator = new Random();
 
-		int genTempTab[] = new int[12];
-		int genTemp;
+		int randTab[] = new int[howManyComets];
 
 		for (int i = 0; i < howManyComets; i++) {
 			generator.setSeed(System.nanoTime());
-			for (int j = 0; j < 11; j++) {
-				genTempTab[j] = generator.nextInt(500);
-				genTemp = generator.nextInt(500);
-				if (genTempTab[j] + 30 < genTemp | genTempTab[j] - 30 > genTemp) {
-					genTemp = generator.nextInt(500);
-				}
-			}
+			int temp = generator.nextInt(5); // chose one from 5 different
+												// comets show below
 
-			cList.add(new Comet(genTempTab[0], genTempTab[1], genTempTab[2],
-					genTempTab[3], genTempTab[4], genTempTab[5], genTempTab[6],
-					genTempTab[7], genTempTab[8], genTempTab[9],
-					genTempTab[10], genTempTab[11]));
+			randTab[i] = temp;
+			System.out.println("Chosen Comet nb: " + temp);
+
+		}
+		for (int tempInt = 0; tempInt < randTab.length; tempInt++) {
+			generator.setSeed(System.nanoTime());
+			int x = generator.nextInt(WIDTH - 40);
+			int y = generator.nextInt(HEIGHT - 40);
+			switch (randTab[tempInt]) {
+			case 0:
+				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
+						y + 5, x + 30, y + 30, x + 10, y + 20, x + 10, y + 10));
+				break;
+			case 1:
+				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
+						y + 5, x + 30, y + 30, x + 10, y + 20, x + 10, y + 10));
+				break;
+			case 2:
+				finalShapeList
+						.add(new Comet(x, y, x + 19, y - 21, x - 1, y - 37,
+								x - 22, y - 34, x - 26, y - 31, x - 12, y - 22));
+				break;
+
+			case 3:
+				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
+						y + 5, x + 30, y + 30, x + 10, y + 20, x + 10, y + 10));
+				break;
+			case 4:
+				finalShapeList
+						.add(new Comet(x, y, x + 20, y - 15, x + 45, y + 10,
+								x + 30, y + 35, x + 10, y + 25, x + 10, y + 15));
+				break;
+			case 5:
+				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
+						y + 5, x + 30, y + 20, x + 10, y + 20, x + 10, y + 10));
+				break;
+			}
 		}
 
-		return cList;
+		return finalShapeList;
 	}
 
 	// second method for creating Array List of comets ,but this time using just
 	// some preset shapes
 	// but chosing them randomly
-
 	private ArrayList<Shape> createCometList(ArrayList<Shape> ShapeList,
 			int howManyComets) {
 		ArrayList<Shape> cList = new ArrayList<Shape>();
-		// ArrayList cFinalList = new <Shape> ArrayList();
 		cList.add(new Comet(30, 20, 50, 15, 70, 25, 60, 50, 40, 40, 40, 30));
 		cList.add(new Comet(130, 120, 150, 115, 170, 125, 160, 150, 140, 140,
 				140, 130));
@@ -602,7 +772,7 @@ public class SimpleGame implements Runnable {
 				440, 430));
 		cList.add(new Comet(730, 720, 750, 715, 770, 725, 760, 750, 740, 740,
 				740, 730));
-		// Random ganerateing diffrent numbers
+		// Random generating different numbers
 		Random generator = new Random();
 
 		int randTab[] = new int[howManyComets];
@@ -719,7 +889,8 @@ public class SimpleGame implements Runnable {
 		return shape;
 	}
 
-	// method using to move all shape using AffineTransform function
+	// method using to move all shape using AffineTransform function -Now its
+	// used only for Comets
 	public Shape moveShape(Shape shape, int direction, int dist) {
 		AffineTransform at;
 
