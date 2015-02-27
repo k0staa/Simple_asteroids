@@ -265,8 +265,8 @@ public class SimpleGame implements Runnable {
 			if (ke.getKeyCode() == VK_SPACE) {
 				shootBullet();
 				System.out.println("WOWWW");
-				laser.play();
 				shooting = true;
+				laser.play();
 				shootingTime = 0;
 
 			}
@@ -722,6 +722,13 @@ public class SimpleGame implements Runnable {
 			generator.setSeed(System.nanoTime());
 			int x = generator.nextInt(WIDTH - 40);
 			int y = generator.nextInt(HEIGHT - 40);
+			while( (x < shapeShip.getBounds2D().getMaxX() & x > shapeShip.getBounds2D().getMinX()) &
+				(y < shapeShip.getBounds2D().getMaxY() & y > shapeShip.getBounds2D().getMinY())){
+					x = generator.nextInt(WIDTH - 40);
+					y = generator.nextInt(HEIGHT - 40);
+				}
+			
+			
 			switch (randTab[tempInt]) {
 			case 0:
 				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
