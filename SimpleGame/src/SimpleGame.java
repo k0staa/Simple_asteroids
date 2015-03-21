@@ -42,41 +42,37 @@ public class SimpleGame implements Runnable {
 
 	final int WIDTH = 1000;
 	final int HEIGHT = 700;
-	final int shipShapeTableX[] = new int[] { 480, 500, 520, 500 }; // Table of
-																	// x points
-																	// of ship
-																	// shape
-	final int shipShapeTableY[] = new int[] { 370, 360, 370, 330 }; // Table of
-																	// y points
-																	// of ship
-																	// shape
-	int shipHeadDegrees = 0; // This is used to measure angle of ship using
-								// degrees
-	boolean shooting = false; // Used to draw bullets in render method
-	int shootingTime; // Time duration of bullet life
-	int numberOfComets = 12; // Number of comets in game
-	boolean killingComplete = true; // This tells when method killComet is
-									// active
-	boolean explode = false; // This tells when bullet hit and destroy comet
-
+	// Tables of points used to configure shape of the ship.//
+	final int shipShapeTableX[] = new int[] { 480, 500, 520, 500 }; 
+	final int shipShapeTableY[] = new int[] { 370, 360, 370, 330 }; 
+	//-----------------------------------------------------//
+	int howManyKilled; // Counting how many comets has been destroyed//
+	int pointsGained;  //Points gained during game//
+	int shipHeadDegrees = 0;  	// Angle of ship in degrees//
+	int shootingTime; 			// Time duration of bullet life//
+	int numberOfComets = 12; 	// Number of comets in game-TO DO In-game config//
+	
+	//Data used to configure frame per second in game //
 	long desiredFPS = 70;
 	long desiredDeltaLoop = (1000 * 1000 * 1000) / desiredFPS;
 	long fps;
-
-	boolean running = false; // Main loop boolean
-	boolean gamePaused = false; // Boolean used for pausing game
-	boolean gameOver = false; // tells if game is already played and finish;
-	int howManyKilled; // Counting how many comets been destroyed
-	int pointsGained;
-	// SOUNDS
+	//-----------------------------------------------//
+	boolean shooting = false; 		// Drawing bullets when true//
+	boolean killingComplete = true; // Method killComet is active//								
+	boolean explode = false; 		// Bullet hit and destroy comet when true//
+	boolean running = false; 		// Main game loop//
+	boolean gamePaused = false; 	// Used for pausing game//
+	boolean gameOver = false; 		// Tells if game is already played and finish//
+	
+	// SOUNDS //
 	AudioClip laser;
 	AudioClip cometExplode;
 	AudioClip music;
-	// FRAME AND GRAPHICS
+	// FRAME AND GRAPHICS //
 	JFrame frame;
 	Canvas canvas;
 	BufferStrategy bufferStrategy;
-	// GAME OBJECTS
+	// GAME OBJECTS //
 	Shape shapeShip;
 	Shape shapeBullet;
 	Shape comet;
@@ -84,7 +80,9 @@ public class SimpleGame implements Runnable {
 	ArrayList<Shape> cometList;
 	ArrayList<Integer> cometDirectionList;
 	ArrayList<Integer> particlesExplosionTime;
+	// CONTROLS //
 	KeyControl myKeyControl;
+	// GAME THREAD //
 	Thread gameThread;
 
 	public SimpleGame() {
@@ -289,7 +287,7 @@ public class SimpleGame implements Runnable {
 
 	}
 
-	// metod creates bullet after pressing SPACE key
+	// Method creates bullet after pressing SPACE key
 	void shootBullet() {
 
 		int bulletTableX[] = new int[] {
@@ -328,7 +326,7 @@ public class SimpleGame implements Runnable {
 		}
 	}
 
-	// main loop for the game
+	// Main game loop //
 	public void run() {
 		long beginLoopTime;
 		long endLoopTime;
@@ -336,14 +334,14 @@ public class SimpleGame implements Runnable {
 		long lastUpdateTime;
 		long deltaLoop;
 
-		// this is main loop for our game where we setup frame rate for later
+		// This is main loop for game where we setup frame rate for later
 		// use in update method
 		while (running) {
 			while (gamePaused) {
 				try {
 					Thread.currentThread().sleep(100);
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
+					
 					e.printStackTrace();
 				}
 			}
@@ -362,7 +360,7 @@ public class SimpleGame implements Runnable {
 			}
 			// This loop is to maintain proper FPS (default 60)
 			if (deltaLoop > desiredDeltaLoop) {
-				// Do nothing. Frame Rate are low now!.
+				// Do nothing. Frame Rate are low now.
 				System.out.println("low FPS: " + fps);
 			} else {
 				try {
@@ -422,8 +420,7 @@ public class SimpleGame implements Runnable {
 	}
 
 	// Method used just for preparing main window of game and starts
-	// render(Graphics2D) to draw
-	// all elements of game
+	// render(Graphics2D) to draw all elements of game
 
 	private void render() {
 		Graphics2D g = (Graphics2D) bufferStrategy.getDrawGraphics();
@@ -549,17 +546,19 @@ public class SimpleGame implements Runnable {
 				drawComet(g, sh);
 			}
 		}
+		// Showing string with FPS on screen ---------------//
 		g.setColor(Color.yellow);
-		g.drawString(String.valueOf(fps) + " fps", 900, 50); // Showing string
-																// with FPS on
-																// screen
+		g.drawString(String.valueOf(fps) + " fps", 900, 50); 
+		
+		// Showing angle of the ship -----------------------------------//
 		g.drawString("angle: " + String.valueOf(shipHeadDegrees) + " deg.",
-				900, 30); // Showing angle of the ship
+				900, 30); 
+		
+		// Showing player score during game ---------------------------//
 		g.setColor(Color.red);
-		g.drawString("SCORE:: " + String.valueOf(pointsGained), 900, 10); // Showing
-																			// player
-																			// score
-		// Drawing from list of comets
+		g.drawString("SCORE:: " + String.valueOf(pointsGained), 900, 10); 
+		
+		// Drawing from list of comets ------//
 		if (true) {
 			for (Shape sh : cometList) {
 				drawComet(g, sh);
@@ -568,7 +567,7 @@ public class SimpleGame implements Runnable {
 		}
 	}
 
-	// method used for destroying comets when bullet hits them
+	// Method used for destroying comets when bullet hits them
 	private void destroyComet(int cometId) {
 		System.out.println("Zabijam " + cometId);
 		cometList.remove(cometId);
@@ -578,7 +577,7 @@ public class SimpleGame implements Runnable {
 		killingComplete = true;
 	}
 
-	// method used to draw gamer ship
+	// Method used to draw gamer ship
 	private void drawKillerPolygon(Graphics2D g2) {
 		g2.setColor(Color.red);
 		g2.draw(shapeShip);
@@ -586,22 +585,21 @@ public class SimpleGame implements Runnable {
 
 	}
 
-	// metod used to draw bullet when shooting
+	// Method used to draw bullets
 	private void drawBullet(Graphics2D g2) {
 		g2.setColor(Color.yellow);
 		g2.draw(shapeBullet);
 		g2.fill(shapeBullet);
 	}
 
-	// metod used to draw comet
+	// Mehtod used to draw comet
 	private void drawComet(Graphics2D g2, Shape comet) {
-
 		g2.setColor(Color.blue);
 		g2.draw(comet);
 		g2.fill(comet);
 	}
 
-	// metod used for testing when some shape hit another
+	// Method used for checking when shape hit another shape
 	private boolean testIntersection(Shape shapeA, Shape shapeB) {
 		Area areaA = new Area(shapeA);
 		areaA.intersect(new Area(shapeB));
@@ -609,7 +607,7 @@ public class SimpleGame implements Runnable {
 	}
 
 	// This method checking if any shape reach end of window and needs to be
-	// 'teleported' to another side of window
+	// draw on another side of window
 	private Shape isWindowsEnds(Point location, Shape shapeToTeleport) {
 		AffineTransform at;
 		if (location.getX() > 999) {
@@ -637,7 +635,7 @@ public class SimpleGame implements Runnable {
 
 	}
 
-	// class represent shape of gamer space ship
+	// Class represent shape of gamer space ship
 	private static class SpaceShip extends Polygon {
 		/**
 		 * 
@@ -656,7 +654,7 @@ public class SimpleGame implements Runnable {
 
 	}
 
-	// class represent bullet shape (it's dot)
+	// Class represent bullet shape (it's a dot)
 
 	private static class Bullet extends Polygon {
 
@@ -675,7 +673,7 @@ public class SimpleGame implements Runnable {
 					tableY[2], tableX[3], tableY[3]);
 		}
 	}
-
+	// Class represent comet shape
 	private static class Comet extends Polygon {
 
 		/**
@@ -699,8 +697,7 @@ public class SimpleGame implements Runnable {
 
 	}
 
-	// method that creates Array List of comets (you can chose how many)
-	// using random position
+	// Method that creates Array List of comets using random position //
 	private ArrayList<Shape> createRandCometList(
 			ArrayList<Shape> finalShapeList, int howManyComets) {
 
@@ -711,8 +708,8 @@ public class SimpleGame implements Runnable {
 
 		for (int i = 0; i < howManyComets; i++) {
 			generator.setSeed(System.nanoTime());
-			int temp = generator.nextInt(5); // chose one from 5 different
-												// comets show below
+			// chose one from 5 different comets show below //
+			int temp = generator.nextInt(5); 
 
 			randTab[i] = temp;
 			System.out.println("Chosen Comet nb: " + temp);
@@ -808,7 +805,7 @@ public class SimpleGame implements Runnable {
 
 	}
 
-	// method used to create random direction for comets.
+	// Method used to generate random direction for comets.
 	private ArrayList<Integer> getRandDirections(ArrayList<Integer> intList,
 			int howMany) {
 		Random gen = new Random();
@@ -821,7 +818,7 @@ public class SimpleGame implements Runnable {
 		return intList;
 	}
 
-	// method used to rotate shapes. Created mainly for comets.
+	// Method used to rotate shapes. Created mainly for comets.
 	public Shape rotateShape(Shape shape) {
 		AffineTransform at = new AffineTransform();
 
@@ -832,7 +829,7 @@ public class SimpleGame implements Runnable {
 		return shape;
 
 	}
-
+	// Method used for moving shapes //
 	public Shape moveShape(Shape shape, int dist) {
 		AffineTransform at;
 		if (shipHeadDegrees == 0) {
@@ -896,8 +893,8 @@ public class SimpleGame implements Runnable {
 		return shape;
 	}
 
-	// method using to move all shape using AffineTransform function -Now its
-	// used only for Comets
+	// Method using to move shapes to preconfigured directions 	---------------//
+	// Now its  used only for Comets -TO DO Moving all shapes using one method //
 	public Shape moveShape(Shape shape, int direction, int dist) {
 		AffineTransform at;
 
