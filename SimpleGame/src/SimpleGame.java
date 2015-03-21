@@ -10,9 +10,11 @@ import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Shape;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -26,10 +28,13 @@ import static java.awt.event.KeyEvent.VK_UP;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.image.BufferStrategy;
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Random;
 
+import javax.imageio.ImageIO;
 import javax.swing.JApplet;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -40,8 +45,8 @@ import javax.swing.JPanel;
 
 public class SimpleGame implements Runnable {
 
-	final int WIDTH = 1000;
-	final int HEIGHT = 700;
+	final static int WIDTH = 1000;
+	final static int HEIGHT = 700;
 	// Tables of points used to configure shape of the ship.//
 	final int shipShapeTableX[] = new int[] { 480, 500, 520, 500 }; 
 	final int shipShapeTableY[] = new int[] { 370, 360, 370, 330 }; 
@@ -72,6 +77,7 @@ public class SimpleGame implements Runnable {
 	JFrame frame;
 	Canvas canvas;
 	BufferStrategy bufferStrategy;
+	Image backgroundImg;
 	// GAME OBJECTS //
 	Shape shapeShip;
 	Shape shapeBullet;
@@ -97,10 +103,17 @@ public class SimpleGame implements Runnable {
 		canvas = new Canvas();
 		canvas.setBounds(0, 0, WIDTH, HEIGHT);
 		canvas.setIgnoreRepaint(true);
-
+		try {
+			
+			backgroundImg = ImageIO.read(new File("src/background.gif"));
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.out.println("Image can't be loaded");
+		}
 		panel.add(canvas);
 
-		myKeyControl = new KeyControl();
+		myKeyControl = new KeyControl(this);
+		
 		canvas.addKeyListener(myKeyControl);
 
 		frame.setJMenuBar(addMenuBar());
@@ -113,7 +126,8 @@ public class SimpleGame implements Runnable {
 		bufferStrategy = canvas.getBufferStrategy();
 
 		canvas.requestFocus();
-
+		
+		//Sound initialization
 		URL sndLaser = this.getClass().getResource("laser.wav");
 		URL sndMusic = this.getClass().getResource("music.wav");
 		URL sndExplode = this.getClass().getResource("explode.wav");
@@ -122,13 +136,13 @@ public class SimpleGame implements Runnable {
 		music = Applet.newAudioClip(sndMusic);
 		music.loop(); 
 		
-
-		shapeShip = new SpaceShip(shipShapeTableX, shipShapeTableY);
+		//Shapes initialization
+		shapeShip = new MyShapes.SpaceShip(shipShapeTableX, shipShapeTableY);
 		explosionParticles = new ArrayList<Shape>();
 		cometList = new ArrayList<Shape>();
-		cometList = createRandCometList(cometList, numberOfComets);
+		cometList = MyShapes.createRandCometList(cometList, numberOfComets,shapeShip);
 		cometDirectionList = new ArrayList<Integer>();
-		cometDirectionList = this.getRandDirections(cometDirectionList,
+		cometDirectionList = MyShapes.getRandDirections(cometDirectionList,
 				numberOfComets);
 		particlesExplosionTime = new ArrayList<Integer>();
 
@@ -164,14 +178,14 @@ public class SimpleGame implements Runnable {
 					if (gamePaused & gameOver == false) {
 						gamePaused = false;
 					} else if (gameOver) {
-						shapeShip = new SpaceShip(shipShapeTableX,
+						shapeShip = new MyShapes.SpaceShip(shipShapeTableX,
 								shipShapeTableY);
 						explosionParticles = new ArrayList<Shape>();
 						cometList = new ArrayList<Shape>();
-						cometList = createRandCometList(cometList,
-								numberOfComets);
+						cometList = MyShapes.createRandCometList(cometList,
+								numberOfComets,shapeShip);
 						cometDirectionList = new ArrayList<Integer>();
-						cometDirectionList = getRandDirections(
+						cometDirectionList = MyShapes.getRandDirections(
 								cometDirectionList, numberOfComets);
 						particlesExplosionTime = new ArrayList<Integer>();
 						shipHeadDegrees = 0;
@@ -240,52 +254,7 @@ public class SimpleGame implements Runnable {
 		return menuBar;
 	}
 
-	private class KeyControl extends KeyAdapter {
 
-		boolean movingLeft = false;
-		boolean movingRight = false;
-		boolean movingUp = false;
-
-		@Override
-		public void keyPressed(KeyEvent ke) {
-			if (ke.getKeyCode() == VK_UP) {
-				movingUp = true;
-
-			}
-			if (ke.getKeyCode() == VK_LEFT) {
-				movingLeft = true;
-
-			}
-			if (ke.getKeyCode() == VK_RIGHT) {
-				movingRight = true;
-
-			}
-			if (ke.getKeyCode() == VK_SPACE) {
-				shootBullet();
-				System.out.println("WOWWW");
-				shooting = true;
-				laser.play();
-				shootingTime = 0;
-
-			}
-		}
-
-		public void keyReleased(KeyEvent ke) {
-			if (ke.getKeyCode() == VK_UP) {
-				movingUp = false;
-
-			}
-			if (ke.getKeyCode() == VK_LEFT) {
-				movingLeft = false;
-
-			}
-			if (ke.getKeyCode() == VK_RIGHT) {
-				movingRight = false;
-
-			}
-		}
-
-	}
 
 	// Method creates bullet after pressing SPACE key
 	void shootBullet() {
@@ -300,7 +269,7 @@ public class SimpleGame implements Runnable {
 				((int) shapeShip.getBounds().getCenterY()) - 2,
 				((int) shapeShip.getBounds().getCenterY()) - 4,
 				((int) shapeShip.getBounds().getCenterY()) - 2 };
-		shapeBullet = new Bullet(bulletTableX, bulletTableY);
+		shapeBullet = new MyShapes.Bullet(bulletTableX, bulletTableY);
 
 	}
 
@@ -320,7 +289,7 @@ public class SimpleGame implements Runnable {
 					((int) destroyedComet.getBounds().getCenterY()) - 2,
 					((int) destroyedComet.getBounds().getCenterY()) - 4,
 					((int) destroyedComet.getBounds().getCenterY()) - 2 };
-			temp = new Bullet(bulletTableX, bulletTableY);
+			temp = new MyShapes.Bullet(bulletTableX, bulletTableY);
 			explosionParticles.add(i, temp);
 			particlesExplosionTime.add(i, 0);
 		}
@@ -334,8 +303,7 @@ public class SimpleGame implements Runnable {
 		long lastUpdateTime;
 		long deltaLoop;
 
-		// This is main loop for game where we setup frame rate for later
-		// use in update method
+		// This is main loop for game //
 		while (running) {
 			while (gamePaused) {
 				try {
@@ -374,58 +342,15 @@ public class SimpleGame implements Runnable {
 
 	}
 
-	void movingShip() {
-		if (myKeyControl.movingLeft) {
-
-			changeHeadShapePos(false);
-			shapeShip = AffineTransform.getRotateInstance(Math.toRadians(-3),
-					shapeShip.getBounds2D().getCenterX(),
-					shapeShip.getBounds2D().getCenterY())
-					.createTransformedShape(shapeShip);
-
-		}
-		if (myKeyControl.movingRight) {
-			changeHeadShapePos(true);
-
-			shapeShip = AffineTransform.getRotateInstance(Math.toRadians(3),
-					shapeShip.getBounds2D().getCenterX(),
-					shapeShip.getBounds2D().getCenterY())
-					.createTransformedShape(shapeShip);
-
-		}
-		if (myKeyControl.movingUp) {
-			System.out.println("UP!: ");
-			shapeShip = moveShape(shapeShip, 9);
-			shapeShip = isWindowsEnds(shapeShip.getBounds().getLocation(),
-					shapeShip);
-
-		}
-	}
-
-	// This metod is used to measure angle of the ship
-	void changeHeadShapePos(boolean rightArrow) {
-		if (rightArrow == true) {
-			if (shipHeadDegrees < 357) {
-				shipHeadDegrees += 3;
-			} else {
-				shipHeadDegrees = 0;
-			}
-		} else {
-			if (shipHeadDegrees > 2) {
-				shipHeadDegrees -= 3;
-			} else {
-				shipHeadDegrees = 357;
-			}
-		}
-	}
 
 	// Method used just for preparing main window of game and starts
 	// render(Graphics2D) to draw all elements of game
 
 	private void render() {
 		Graphics2D g = (Graphics2D) bufferStrategy.getDrawGraphics();
-		g.setBackground(Color.black);
+		//g.setBackground(Color.black);
 		g.clearRect(0, 0, WIDTH, HEIGHT);
+		g.drawImage(backgroundImg, 0, 0, null);
 		render(g);
 		g.dispose();
 		bufferStrategy.show();
@@ -440,11 +365,11 @@ public class SimpleGame implements Runnable {
 
 		if (shooting) {
 
-			shapeBullet = moveShape(shapeBullet, 10);
+			shapeBullet = MyShapes.moveShape(shipHeadDegrees,shapeBullet, 10);
 			shootingTime++;
 			// this loop check if bullet hits comet
 			for (int i = 0; i < cometList.size(); i++) {
-				if (testIntersection(cometList.get(i), shapeBullet)) {
+				if (MyShapes.testIntersection(cometList.get(i), shapeBullet)) {
 					if (cometList.get(i) != null) {
 						this.addExplosionParticles(cometList.get(i));
 					}
@@ -466,7 +391,7 @@ public class SimpleGame implements Runnable {
 			for (int i = 0; i < cometList.size(); i++) {
 				for (int y = 0; y < cometList.size(); y++) {
 					if (cometList.get(i) != cometList.get(y)) {
-						if (testIntersection(cometList.get(i), cometList.get(y))) {
+						if (MyShapes.testIntersection(cometList.get(i), cometList.get(y))) {
 							this.addExplosionParticles(cometList.get(i));
 							this.explode = true;
 							killingComplete = false;
@@ -481,7 +406,7 @@ public class SimpleGame implements Runnable {
 			}
 		}
 		for (int i = 0; i < cometList.size(); i++) {
-			if (testIntersection(cometList.get(i), shapeShip)) {
+			if (MyShapes.testIntersection(cometList.get(i), shapeShip)) {
 				gameOver = true;
 				gamePaused = true;
 				JOptionPane.showMessageDialog(frame, "GAME OVER!");
@@ -492,7 +417,7 @@ public class SimpleGame implements Runnable {
 			int x = 0;
 			for (int i = 0; i < explosionParticles.size(); i++) {
 				explosionParticles.set(i,
-						moveShape(explosionParticles.get(i), x, 1));
+						MyShapes.moveShape(explosionParticles.get(i), x, 1));
 				if (x > 12) {
 					x = 0;
 				} else
@@ -508,19 +433,19 @@ public class SimpleGame implements Runnable {
 		for (int i = 0; i < cometList.size(); i++) {
 
 			cometList.set(i,
-					moveShape(cometList.get(i), cometDirectionList.get(i), 1));
-			cometList.set(i, rotateShape(cometList.get(i)));
+					MyShapes.moveShape(cometList.get(i), cometDirectionList.get(i), 1));
+			cometList.set(i, MyShapes.rotateShape(cometList.get(i)));
 			cometList.set(
 					i,
-					isWindowsEnds(cometList.get(i).getBounds().getLocation(),
+					MyShapes.isWindowsEnds(cometList.get(i).getBounds().getLocation(),
 							cometList.get(i)));
 
 		}
 		while (x > 500) {
 			x = 0;
 			if (howManyKilled > 0) {
-				cometList = this.createRandCometList(cometList, 1);
-				cometDirectionList = this.getRandDirections(cometDirectionList,
+				cometList = MyShapes.createRandCometList(cometList, 1, shapeShip);
+				cometDirectionList = MyShapes.getRandDirections(cometDirectionList,
 						1);
 				howManyKilled--;
 
@@ -531,7 +456,7 @@ public class SimpleGame implements Runnable {
 			shooting = false;
 
 		}
-		movingShip();
+		myKeyControl.movingShip();
 
 	}
 
@@ -599,394 +524,18 @@ public class SimpleGame implements Runnable {
 		g2.fill(comet);
 	}
 
-	// Method used for checking when shape hit another shape
-	private boolean testIntersection(Shape shapeA, Shape shapeB) {
-		Area areaA = new Area(shapeA);
-		areaA.intersect(new Area(shapeB));
-		return !areaA.isEmpty();
-	}
 
-	// This method checking if any shape reach end of window and needs to be
-	// draw on another side of window
-	private Shape isWindowsEnds(Point location, Shape shapeToTeleport) {
-		AffineTransform at;
-		if (location.getX() > 999) {
-			at = new AffineTransform();
-			at.translate(-999, 0);
-			shapeToTeleport = at.createTransformedShape(shapeToTeleport);
-			return shapeToTeleport;
-		} else if (location.getX() < 1) {
-			at = new AffineTransform();
-			at.translate(999, 0);
-			shapeToTeleport = at.createTransformedShape(shapeToTeleport);
-			return shapeToTeleport;
-		} else if (location.getY() > 699) {
-			at = new AffineTransform();
-			at.translate(0, -699);
-			shapeToTeleport = at.createTransformedShape(shapeToTeleport);
-			return shapeToTeleport;
-		} else if (location.getY() < 1) {
-			at = new AffineTransform();
-			at.translate(0, +699);
-			shapeToTeleport = at.createTransformedShape(shapeToTeleport);
-			return shapeToTeleport;
-		} else
-			return shapeToTeleport;
 
-	}
 
-	// Class represent shape of gamer space ship
-	private static class SpaceShip extends Polygon {
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = 1L;
 
-		public SpaceShip(int x1, int y1, int x2, int y2, int x3, int y3,
-				int x4, int y4) {
-			super(new int[] { x1, x2, x3, x4 }, new int[] { y1, y2, y3, y4 }, 4);
-		}
 
-		public SpaceShip(int tableX[], int tableY[]) {
-			this(tableX[0], tableY[0], tableX[1], tableY[1], tableX[2],
-					tableY[2], tableX[3], tableY[3]);
-		}
-
-	}
-
-	// Class represent bullet shape (it's a dot)
-
-	private static class Bullet extends Polygon {
-
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = 1L;
-
-		public Bullet(int x1, int y1, int x2, int y2, int x3, int y3, int x4,
-				int y4) {
-			super(new int[] { x1, x2, x3, x4 }, new int[] { y1, y2, y3, y4 }, 4);
-		}
-
-		public Bullet(int tableX[], int tableY[]) {
-			this(tableX[0], tableY[0], tableX[1], tableY[1], tableX[2],
-					tableY[2], tableX[3], tableY[3]);
-		}
-	}
-	// Class represent comet shape
-	private static class Comet extends Polygon {
-
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = 1L;
-
-		public Comet(int x1, int y1, int x2, int y2, int x3, int y3, int x4,
-				int y4, int x5, int y5, int x6, int y6) {
-			super(new int[] { x1, x2, x3, x4, x5, x6 }, new int[] { y1, y2, y3,
-					y4, y5, y6 }, 6);
-
-		}
-
-		public Comet(int tableX[], int tableY[]) {
-			this(tableX[0], tableY[0], tableX[1], tableY[1], tableX[2],
-					tableY[2], tableX[3], tableY[3], tableX[4], tableY[4],
-					tableX[5], tableY[5]);
-
-		}
-
-	}
-
-	// Method that creates Array List of comets using random position //
-	private ArrayList<Shape> createRandCometList(
-			ArrayList<Shape> finalShapeList, int howManyComets) {
-
-		// Random generating different numbers
-		Random generator = new Random();
-
-		int randTab[] = new int[howManyComets];
-
-		for (int i = 0; i < howManyComets; i++) {
-			generator.setSeed(System.nanoTime());
-			// chose one from 5 different comets show below //
-			int temp = generator.nextInt(5); 
-
-			randTab[i] = temp;
-			System.out.println("Chosen Comet nb: " + temp);
-
-		}
-		for (int tempInt = 0; tempInt < randTab.length; tempInt++) {
-			generator.setSeed(System.nanoTime());
-			int x = generator.nextInt(WIDTH - 40);
-			int y = generator.nextInt(HEIGHT - 40);
-			while( (x < shapeShip.getBounds2D().getMaxX() & x > shapeShip.getBounds2D().getMinX()) &
-				(y < shapeShip.getBounds2D().getMaxY() & y > shapeShip.getBounds2D().getMinY())){
-					x = generator.nextInt(WIDTH - 40);
-					y = generator.nextInt(HEIGHT - 40);
-				}
-			
-			
-			switch (randTab[tempInt]) {
-			case 0:
-				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
-						y + 5, x + 30, y + 30, x + 10, y + 20, x + 10, y + 10));
-				break;
-			case 1:
-				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
-						y + 5, x + 30, y + 30, x + 10, y + 20, x + 10, y + 10));
-				break;
-			case 2:
-				finalShapeList
-						.add(new Comet(x, y, x + 19, y - 21, x - 1, y - 37,
-								x - 22, y - 34, x - 26, y - 31, x - 12, y - 22));
-				break;
-
-			case 3:
-				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
-						y + 5, x + 30, y + 30, x + 10, y + 20, x + 10, y + 10));
-				break;
-			case 4:
-				finalShapeList
-						.add(new Comet(x, y, x + 20, y - 15, x + 45, y + 10,
-								x + 30, y + 35, x + 10, y + 25, x + 10, y + 15));
-				break;
-			case 5:
-				finalShapeList.add(new Comet(x, y, x + 20, y - 5, x + 40,
-						y + 5, x + 30, y + 20, x + 10, y + 20, x + 10, y + 10));
-				break;
-			}
-		}
-
-		return finalShapeList;
-	}
-
-	// second method for creating Array List of comets ,but this time using just
-	// some preset shapes
-	// but chosing them randomly
-	private ArrayList<Shape> createCometList(ArrayList<Shape> ShapeList,
-			int howManyComets) {
-		ArrayList<Shape> cList = new ArrayList<Shape>();
-		cList.add(new Comet(30, 20, 50, 15, 70, 25, 60, 50, 40, 40, 40, 30));
-		cList.add(new Comet(130, 120, 150, 115, 170, 125, 160, 150, 140, 140,
-				140, 130));
-		cList.add(new Comet(56, 67, 75, 46, 55, 30, 34, 33, 30, 36, 44, 45));
-		cList.add(new Comet(230, 220, 250, 215, 270, 225, 260, 250, 240, 240,
-				240, 230));
-		cList.add(new Comet(430, 415, 450, 400, 475, 425, 460, 450, 440, 440,
-				440, 430));
-		cList.add(new Comet(730, 720, 750, 715, 770, 725, 760, 750, 740, 740,
-				740, 730));
-		// Random generating different numbers
-		Random generator = new Random();
-
-		int randTab[] = new int[howManyComets];
-		boolean numbIsThere = false;
-
-		for (int i = 0; i < howManyComets;) {
-			generator.setSeed(System.nanoTime());
-			int temp = generator.nextInt(cList.size());
-
-			for (int j = 0; j < i; j++) {
-				if (temp == randTab[j]) {
-					numbIsThere = true;
-				} else {
-					numbIsThere = false;
-				}
-			}
-			if (!numbIsThere) {
-				randTab[i] = temp;
-				System.out.println("Chosen Comet nb: " + temp);
-				ShapeList.add((Shape) cList.get(temp));
-				i++;
-			}
-		}
-
-		return ShapeList;
-
-	}
-
-	// Method used to generate random direction for comets.
-	private ArrayList<Integer> getRandDirections(ArrayList<Integer> intList,
-			int howMany) {
-		Random gen = new Random();
-		gen.setSeed(System.currentTimeMillis());
-		// ArrayList intList = new <Integer>ArrayList();
-		for (int i = 0; i < howMany; i++) {
-			intList.add(gen.nextInt(12));
-
-		}
-		return intList;
-	}
-
-	// Method used to rotate shapes. Created mainly for comets.
-	public Shape rotateShape(Shape shape) {
-		AffineTransform at = new AffineTransform();
-
-		at.rotate(Math.PI / 1000, shape.getBounds().getCenterX(), shape
-				.getBounds().getCenterY());
-		shape = at.createTransformedShape(shape);
-
-		return shape;
-
-	}
-	// Method used for moving shapes //
-	public Shape moveShape(Shape shape, int dist) {
-		AffineTransform at;
-		if (shipHeadDegrees == 0) {
-			at = new AffineTransform();
-
-			at.translate(0, -dist);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees > 0 & shipHeadDegrees < 90) {
-			at = new AffineTransform();
-			int tempDistY = dist - (shipHeadDegrees / 10);
-			int tempDistX = shipHeadDegrees / 10;
-			at.translate(tempDistX, -tempDistY);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees == 90) {
-			at = new AffineTransform();
-
-			at.translate(dist, 0);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees > 90 & shipHeadDegrees < 180) {
-			at = new AffineTransform();
-			int tempDist = ((shipHeadDegrees - 90) / 10);
-			int tempDistX = dist - ((shipHeadDegrees - 90) / 10);
-			at.translate(tempDistX, tempDist);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees == 180) {
-			at = new AffineTransform();
-
-			at.translate(0, dist);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees > 180 & shipHeadDegrees < 270) {
-			at = new AffineTransform();
-			int tempDist = dist - ((shipHeadDegrees - 180) / 10);
-			int tempDistX = ((shipHeadDegrees - 180) / 10);
-			at.translate(-tempDistX, tempDist);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees == 270) {
-			at = new AffineTransform();
-
-			at.translate(-dist, 0);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees > 270 & shipHeadDegrees < 360) {
-			at = new AffineTransform();
-			int tempDist = ((shipHeadDegrees - 270) / 10);
-			int tempDistX = dist - ((shipHeadDegrees - 270) / 10);
-			at.translate(-tempDistX, -tempDist);
-			shape = at.createTransformedShape(shape);
-		}
-		if (shipHeadDegrees == 360) {
-			at = new AffineTransform();
-
-			at.translate(0, -dist);
-			shape = at.createTransformedShape(shape);
-		}
-		return shape;
-	}
-
-	// Method using to move shapes to preconfigured directions 	---------------//
-	// Now its  used only for Comets -TO DO Moving all shapes using one method //
-	public Shape moveShape(Shape shape, int direction, int dist) {
-		AffineTransform at;
-
-		switch (direction) {
-		case 1:
-			at = new AffineTransform();
-
-			at.translate(0, -dist);
-			shape = at.createTransformedShape(shape);
-
-			break;
-		case 2:
-			at = new AffineTransform();
-
-			at.translate(dist, -dist * Math.toRadians(60));
-			shape = at.createTransformedShape(shape);
-			break;
-		case 3:
-			at = new AffineTransform();
-
-			at.translate(dist, -dist * Math.toRadians(30));
-			shape = at.createTransformedShape(shape);
-			break;
-
-		case 4:
-			at = new AffineTransform();
-
-			at.translate(dist, 0);
-			shape = at.createTransformedShape(shape);
-			break;
-		// ok
-		case 5:
-			at = new AffineTransform();
-
-			at.translate(dist, dist * Math.toRadians(30));
-			shape = at.createTransformedShape(shape);
-			break;
-		case 6:
-			at = new AffineTransform();
-
-			at.translate(dist, dist * Math.toRadians(60));
-			shape = at.createTransformedShape(shape);
-			break;
-		case 7:
-			at = new AffineTransform();
-
-			at.translate(0, dist);
-			shape = at.createTransformedShape(shape);
-			break;
-		case 8:
-			at = new AffineTransform();
-
-			at.translate(-dist, dist * Math.toRadians(60));
-			shape = at.createTransformedShape(shape);
-
-			break;
-		case 9:
-			at = new AffineTransform();
-
-			at.translate(-dist, dist * Math.toRadians(30));
-			shape = at.createTransformedShape(shape);
-
-			break;
-		case 10:
-			at = new AffineTransform();
-
-			at.translate(-dist, 0);
-			shape = at.createTransformedShape(shape);
-			break;
-		// ok
-		case 11:
-			at = new AffineTransform();
-
-			at.translate(-dist, -dist * Math.toRadians(30));
-			shape = at.createTransformedShape(shape);
-			break;
-		case 12:
-			at = new AffineTransform();
-
-			at.translate(-dist, -dist * Math.toRadians(60));
-			shape = at.createTransformedShape(shape);
-			break;
-
-		}
-		return shape;
-	}
 
 	// Main function
 
 	public static void main(String[] args) {
-		SimpleGame ex = new SimpleGame();
-		// new Thread(ex).start();
+		SimpleGame game = new SimpleGame();
+		
+		new Thread(game).start();
 	}
 
 }
