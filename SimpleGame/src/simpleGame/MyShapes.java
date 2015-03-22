@@ -1,3 +1,4 @@
+package simpleGame;
 import java.awt.Point;
 import java.awt.Polygon;
 import java.awt.Shape;
@@ -91,53 +92,58 @@ public class MyShapes extends Polygon {
 			at.translate(0, -dist);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees > 0 & shipHeadDegrees < 90) {
+		else if (shipHeadDegrees > 0 & shipHeadDegrees < 90) {
 			at = new AffineTransform();
 			int tempDistY = dist - (shipHeadDegrees / 10);
 			int tempDistX = shipHeadDegrees / 10;
 			at.translate(tempDistX, -tempDistY);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees == 90) {
+		else if (shipHeadDegrees == 90) {
 			at = new AffineTransform();
 
 			at.translate(dist, 0);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees > 90 & shipHeadDegrees < 180) {
+		else if (shipHeadDegrees > 90 & shipHeadDegrees < 180) {
 			at = new AffineTransform();
 			int tempDist = ((shipHeadDegrees - 90) / 10);
 			int tempDistX = dist - ((shipHeadDegrees - 90) / 10);
 			at.translate(tempDistX, tempDist);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees == 180) {
+		else if (shipHeadDegrees == 180) {
 			at = new AffineTransform();
 
 			at.translate(0, dist);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees > 180 & shipHeadDegrees < 270) {
+		else if (shipHeadDegrees > 180 & shipHeadDegrees < 270) {
 			at = new AffineTransform();
 			int tempDist = dist - ((shipHeadDegrees - 180) / 10);
 			int tempDistX = ((shipHeadDegrees - 180) / 10);
 			at.translate(-tempDistX, tempDist);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees == 270) {
+		else if (shipHeadDegrees == 270) {
 			at = new AffineTransform();
 
 			at.translate(-dist, 0);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees > 270 & shipHeadDegrees < 360) {
+		else if (shipHeadDegrees > 270 & shipHeadDegrees < 360) {
 			at = new AffineTransform();
 			int tempDist = ((shipHeadDegrees - 270) / 10);
 			int tempDistX = dist - ((shipHeadDegrees - 270) / 10);
 			at.translate(-tempDistX, -tempDist);
 			shape = at.createTransformedShape(shape);
 		}
-		if (shipHeadDegrees == 360) {
+		else if (shipHeadDegrees == 360) {
+			at = new AffineTransform();
+
+			at.translate(0, -dist);
+			shape = at.createTransformedShape(shape);
+		}else {
 			at = new AffineTransform();
 
 			at.translate(0, -dist);
@@ -238,27 +244,29 @@ public class MyShapes extends Polygon {
 		public static ArrayList<Shape> createRandCometList(ArrayList<Shape> finalShapeList,
 				int howManyComets,Shape shipCurrentPosition) {
 
-			// Random generating different numbers
-			Random generator = new Random();
-
 			int randTab[] = new int[howManyComets];
+			// Random generator for comets
+			Random generator = new Random();
 
 			for (int i = 0; i < howManyComets; i++) {
 				generator.setSeed(System.nanoTime());
-				// chose one from 5 different comets show below //
+				// chose one from 5 different comets shown below //
 				int temp = generator.nextInt(5); 
-
 				randTab[i] = temp;
-				System.out.println("Chosen Comet nb: " + temp);
+				
 
 			}
 			for (int tempInt = 0; tempInt < randTab.length; tempInt++) {
 				generator.setSeed(System.nanoTime());
-				int x = generator.nextInt(SimpleGame.WIDTH - 40);
+				int x;
+				if(tempInt%2 == 0){
+					 x = 5;
+				}else x = SimpleGame.WIDTH - 10;
+				//int x = generator.nextInt(SimpleGame.WIDTH - 40);
 				int y = generator.nextInt(SimpleGame.HEIGHT - 40);
-				while( (x < shipCurrentPosition.getBounds2D().getMaxX() & x > shipCurrentPosition.getBounds2D().getMinX()) &
-					(y < shipCurrentPosition.getBounds2D().getMaxY() & y > shipCurrentPosition.getBounds2D().getMinY())){
-						x = generator.nextInt(SimpleGame.WIDTH - 40);
+				while( (x < shipCurrentPosition.getBounds2D().getMaxX() + 10 & x > shipCurrentPosition.getBounds2D().getMinX() - 10) |
+					(y < shipCurrentPosition.getBounds2D().getMaxY() + 10 & y > shipCurrentPosition.getBounds2D().getMinY() -10)){
+						//x = generator.nextInt(SimpleGame.WIDTH - 40);
 						y = generator.nextInt(SimpleGame.HEIGHT - 40);
 					}
 				
@@ -307,24 +315,24 @@ public class MyShapes extends Polygon {
 		// draw on another side of window
 		public static Shape isWindowsEnds(Point location, Shape shapeToTeleport) {
 			AffineTransform at;
-			if (location.getX() > 999) {
+			if (location.getX() > SimpleGame.WIDTH - 1) {
 				at = new AffineTransform();
-				at.translate(-999, 0);
+				at.translate(-(SimpleGame.WIDTH - 1), 0);
 				shapeToTeleport = at.createTransformedShape(shapeToTeleport);
 				return shapeToTeleport;
 			} else if (location.getX() < 1) {
 				at = new AffineTransform();
-				at.translate(999, 0);
+				at.translate(SimpleGame.WIDTH - 1, 0);
 				shapeToTeleport = at.createTransformedShape(shapeToTeleport);
 				return shapeToTeleport;
-			} else if (location.getY() > 699) {
+			} else if (location.getY() > SimpleGame.HEIGHT - 1) {
 				at = new AffineTransform();
-				at.translate(0, -699);
+				at.translate(0, -(SimpleGame.HEIGHT - 1));
 				shapeToTeleport = at.createTransformedShape(shapeToTeleport);
 				return shapeToTeleport;
 			} else if (location.getY() < 1) {
 				at = new AffineTransform();
-				at.translate(0, +699);
+				at.translate(0, SimpleGame.HEIGHT - 1);
 				shapeToTeleport = at.createTransformedShape(shapeToTeleport);
 				return shapeToTeleport;
 			} else

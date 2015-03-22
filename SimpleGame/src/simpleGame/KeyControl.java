@@ -1,3 +1,4 @@
+package simpleGame;
 import static java.awt.event.KeyEvent.VK_LEFT;
 import static java.awt.event.KeyEvent.VK_RIGHT;
 import static java.awt.event.KeyEvent.VK_SPACE;
@@ -35,8 +36,8 @@ import java.awt.geom.AffineTransform;
 			}
 			if (ke.getKeyCode() == VK_SPACE) {
 				myGame.shootBullet();
-				System.out.println("WOWWW");
-				myGame.shooting = true;
+				myGame.bulletDirection = myGame.shipHeadDegrees;
+				myGame.shooting = true;				
 				myGame.laser.play();
 				myGame.shootingTime = 0;
 
@@ -67,6 +68,7 @@ import java.awt.geom.AffineTransform;
 						myGame.shapeShip.getBounds2D().getCenterY())
 						.createTransformedShape(myGame.shapeShip);
 
+
 			}
 			if (movingRight) {
 				changeHeadShapePos(true);
@@ -78,7 +80,6 @@ import java.awt.geom.AffineTransform;
 
 			}
 			if (movingUp) {
-				System.out.println("UP!: ");
 				myGame.shapeShip = MyShapes.moveShape(myGame.shipHeadDegrees,myGame.shapeShip, 9);
 				myGame.shapeShip = MyShapes.isWindowsEnds(myGame.shapeShip.getBounds().getLocation(),
 						myGame.shapeShip);
